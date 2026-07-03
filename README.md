@@ -53,13 +53,13 @@ npm run setup
 npm run daemon -- start
 ```
 
-Windows 下，或希望以前台进程运行时，可以使用：
+Windows 下该命令会在后台启动服务，不会占用当前 PowerShell 窗口。macOS 会通过 `launchd` 管理守护进程；Linux 会优先使用 systemd user service，不可用时退回直接后台进程。
+
+如果希望以前台进程运行，方便看实时输出，可以使用：
 
 ```bash
 npm start
 ```
-
-macOS 会通过 `launchd` 管理守护进程；Linux 可直接运行 Node 入口或接入自己的进程管理工具。
 
 ### 4. 在微信里发送任务
 
@@ -73,6 +73,8 @@ npm run daemon -- stop
 npm run daemon -- restart
 npm run daemon -- logs
 ```
+
+Windows 后台进程的 PID 和 stdout/stderr 日志会写入 `~/.wechat-claude-code/`。
 
 ## 微信命令
 

@@ -72,7 +72,9 @@ A QR code will pop up. Scan it with personal WeChat. If WeChat says it will link
 npm run daemon -- start
 ```
 
-On Windows, or when you want to keep the service in the foreground, use:
+On Windows this starts the service in the background and releases the current PowerShell window. macOS uses `launchd`; Linux uses a systemd user service when available and falls back to a direct background process.
+
+To keep the service in the foreground for live output, use:
 
 ```bash
 npm start
@@ -81,6 +83,17 @@ npm start
 ### 4. Start chatting
 
 Open WeChat and send a message to the bound contact. The daemon forwards the message to the selected local provider and streams the reply back.
+
+## Service Management
+
+```bash
+npm run daemon -- status
+npm run daemon -- stop
+npm run daemon -- restart
+npm run daemon -- logs
+```
+
+On Windows, the PID file and stdout/stderr logs are written under `~/.wechat-claude-code/`.
 
 ## Commands
 
