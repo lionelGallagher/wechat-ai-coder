@@ -55,16 +55,10 @@ npm run daemon -- start
 
 Windows 下该命令会在后台启动服务，不会占用当前 PowerShell 窗口。macOS 会通过 `launchd` 管理守护进程；Linux 会优先使用 systemd user service，不可用时退回直接后台进程。
 
-`npm start` 等同于后台启动：
-
-```bash
-npm start
-```
-
 如果希望以前台进程运行，方便看实时输出，可以使用：
 
 ```bash
-npm run foreground
+npm start
 ```
 
 ### 4. 在微信里发送任务

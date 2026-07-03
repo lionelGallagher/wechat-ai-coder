@@ -6,8 +6,7 @@
   "scripts": {
     "build": "tsc",
     "postinstall": "npm run build",
-    "start": "node dist/daemon.js start",
-    "foreground": "node dist/main.js start",
+    "start": "node dist/main.js",
     "run": "node dist/main.js start",
     "dev": "tsc --watch",
     "test": "node --test dist/tests",

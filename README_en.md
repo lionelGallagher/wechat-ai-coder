@@ -74,16 +74,10 @@ npm run daemon -- start
 
 On Windows this starts the service in the background and releases the current PowerShell window. macOS uses `launchd`; Linux uses a systemd user service when available and falls back to a direct background process.
 
-`npm start` is equivalent to background startup:
-
-```bash
-npm start
-```
-
 To keep the service in the foreground for live output, use:
 
 ```bash
-npm run foreground
+npm start
 ```
 
 ### 4. Start chatting
