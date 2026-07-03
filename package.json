@@ -1,0 +1,34 @@
+{
+  "name": "wechat-ai-coder",
+  "version": "1.0.0",
+  "description": "Bridge personal WeChat messages to local coding agents such as Codex and Claude Code",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "postinstall": "npm run build",
+    "start": "node dist/main.js",
+    "run": "node dist/main.js start",
+    "dev": "tsc --watch",
+    "test": "node --test dist/tests",
+    "setup": "node dist/main.js setup",
+    "daemon": "bash scripts/daemon.sh",
+    "visualize": "npx tsx src/tools/visualize-logs.ts"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/qrcode-terminal": "^0.12.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": ["wechat", "codex", "claude-code", "coding-agent", "bridge", "chat"],
+  "author": "lionelGallagher",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lionelGallagher/wechat-ai-coder.git"
+  }
+}

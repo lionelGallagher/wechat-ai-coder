@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.idea/
+*.log
+.env
+.wechat-claude-code/
+.claude/
+CLAUDE.md
