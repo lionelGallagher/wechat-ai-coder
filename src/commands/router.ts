@@ -1,7 +1,7 @@
 import type { Session } from '../session.js';
 import { findSkill } from '../claude/skill-scanner.js';
 import { logger } from '../logger.js';
-import { handleHelp, handleClear, handleCwd, handleModel, handleStatus, handleSkills, handleHistory, handleReset, handleCompact, handleUndo, handleVersion, handlePrompt, handleSend, handleUnknown } from './handlers.js';
+import { handleHelp, handleClear, handleCwd, handleModel, handleProvider, handleStatus, handleSkills, handleHistory, handleReset, handleCompact, handleUndo, handleVersion, handlePrompt, handleSend, handleUnknown } from './handlers.js';
 
 export interface CommandContext {
   accountId: string;
@@ -15,7 +15,7 @@ export interface CommandContext {
 export interface CommandResult {
   reply?: string;
   handled: boolean;
-  claudePrompt?: string;
+  agentPrompt?: string;
   sendFile?: string; // Absolute path to a file to send to the user
 }
 
@@ -26,9 +26,10 @@ export interface CommandResult {
  *   /help     - Show help text with all available commands
  *   /clear    - Clear the current session
  *   /model <name> - Update the session model
+ *   /provider <name> - Switch provider (codex or claude)
  *   /status   - Show current session info
  *   /skills   - List all installed skills
- *   /<skill>  - Invoke a skill by name (args are forwarded to Claude)
+ *   /<skill>  - Invoke a skill by name (args are forwarded to the local agent)
  */
 export function routeCommand(ctx: CommandContext): CommandResult {
   const text = ctx.text.trim();
@@ -54,6 +55,8 @@ export function routeCommand(ctx: CommandContext): CommandResult {
       return handleCwd(ctx, args);
     case 'model':
       return handleModel(ctx, args);
+    case 'provider':
+      return handleProvider(ctx, args);
     case 'prompt':
       return handlePrompt(ctx, args);
     case 'status':

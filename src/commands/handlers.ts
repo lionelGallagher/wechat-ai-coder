@@ -2,6 +2,7 @@ import type { CommandContext, CommandResult } from './router.js';
 import { scanAllSkills, formatSkillList, findSkill, type SkillInfo } from '../claude/skill-scanner.js';
 import { loadConfig, saveConfig } from '../config.js';
 import { DEFAULT_WORKING_DIR } from '../constants.js';
+import { getProviderLabel, getProviderSessionId, getSessionProvider, parseProviderName, setProviderSessionId } from '../session.js';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, basename, join } from 'node:path';
 import { homedir } from 'node:os';
@@ -15,7 +16,7 @@ const HELP_TEXT = `可用命令：
   /clear            清除当前会话
   /reset            完全重置（包括工作目录等设置）
   /status           查看当前会话状态
-  /compact          压缩上下文（开始新 SDK 会话，保留历史）
+  /compact          压缩上下文（开始新 Codex 会话，保留历史）
   /history [数量]   查看对话记录（默认最近20条）
   /undo [数量]      撤销最近对话（默认1条）
 
@@ -24,7 +25,8 @@ const HELP_TEXT = `可用命令：
 
 配置：
   /cwd [路径]       查看或切换工作目录
-  /model [名称]     查看或切换 Claude 模型
+  /provider [名称]  查看或切换 provider：codex 或 claude
+  /model [名称]     查看或切换当前 provider 的模型
   /prompt [内容]    查看或设置系统提示词（全局生效）
 
 其他：
@@ -32,7 +34,7 @@ const HELP_TEXT = `可用命令：
   /version          查看版本信息
   /<skill> [参数]   触发已安装的 skill
 
-直接输入文字即可与 Claude Code 对话`;
+直接输入文字即可与 Codex 对话`;
 
 // 缓存 skill 列表，避免每次命令都扫描文件系统
 let cachedSkills: SkillInfo[] | null = null;
@@ -73,21 +75,43 @@ export function handleCwd(ctx: CommandContext, args: string): CommandResult {
 
 export function handleModel(ctx: CommandContext, args: string): CommandResult {
   if (!args) {
-    return { reply: '用法: /model <模型名称>\n例: /model claude-sonnet-4-6', handled: true };
+    const provider = getSessionProvider(ctx.session);
+    const example = provider === 'codex' ? 'gpt-5.5' : 'claude-sonnet-4-6';
+    return { reply: `用法: /model <${getProviderLabel(provider)} 模型名称>\n例: /model ${example}`, handled: true };
   }
   ctx.updateSession({ model: args });
   return { reply: `✅ 模型已切换为: ${args}`, handled: true };
 }
 
+export function handleProvider(ctx: CommandContext, args: string): CommandResult {
+  const current = getSessionProvider(ctx.session);
+  if (!args) {
+    return {
+      reply: `当前 Provider: ${getProviderLabel(current)}\n用法: /provider codex 或 /provider claude`,
+      handled: true,
+    };
+  }
+
+  const next = parseProviderName(args);
+  if (!next) {
+    return { reply: '未知 provider。用法: /provider codex 或 /provider claude', handled: true };
+  }
+
+  ctx.updateSession({ provider: next });
+  return { reply: `✅ Provider 已切换为: ${getProviderLabel(next)}`, handled: true };
+}
+
 export function handleStatus(ctx: CommandContext): CommandResult {
   const s = ctx.session;
+  const provider = getSessionProvider(s);
   const lines = [
-    '📊 会话状态',
+    'Session Status',
     '',
-    `工作目录: ${s.workingDirectory}`,
-    `模型: ${s.model ?? '默认'}`,
-    `会话ID: ${s.sdkSessionId ?? '无'}`,
-    `状态: ${s.state}`,
+    `Provider: ${getProviderLabel(provider)}`,
+    `Working Directory: ${s.workingDirectory}`,
+    `Model: ${s.model ?? 'default'}`,
+    `Session ID: ${getProviderSessionId(s, provider) ?? 'none'}`,
+    `State: ${s.state}`,
   ];
   return { reply: lines.join('\n'), handled: true };
 }
@@ -132,16 +156,19 @@ export function handleReset(ctx: CommandContext): CommandResult {
 
 /** 压缩上下文 — 清除 SDK 会话 ID，开始新上下文但保留聊天历史 */
 export function handleCompact(ctx: CommandContext): CommandResult {
-  const currentSessionId = ctx.session.sdkSessionId;
+  const provider = getSessionProvider(ctx.session);
+  const currentSessionId = getProviderSessionId(ctx.session, provider);
   if (!currentSessionId) {
-    return { reply: 'ℹ️ 当前没有活动的 SDK 会话，无需压缩。', handled: true };
+    return { reply: `ℹ️ 当前没有活动的 ${getProviderLabel(provider)} 会话，无需压缩。`, handled: true };
   }
+  setProviderSessionId(ctx.session, provider, undefined);
   ctx.updateSession({
-    previousSdkSessionId: currentSessionId,
-    sdkSessionId: undefined,
+    providerSessionIds: ctx.session.providerSessionIds,
+    agentSessionId: ctx.session.agentSessionId,
+    sdkSessionId: ctx.session.sdkSessionId,
   });
   return {
-    reply: '✅ 上下文已压缩\n\n下次消息将开始新的 SDK 会话（token 清零）\n聊天历史已保留，可用 /history 查看',
+    reply: `✅ 上下文已压缩\n\n下次消息将开始新的 ${getProviderLabel(provider)} 会话（token 清零）\n聊天历史已保留，可用 /history 查看`,
     handled: true,
   };
 }
@@ -168,9 +195,9 @@ export function handleVersion(): CommandResult {
     const __dirname = fileURLToPath(new URL('.', import.meta.url));
     const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
     const version = pkg.version || 'unknown';
-    return { reply: `wechat-claude-code v${version}`, handled: true };
+    return { reply: `wechat-ai-coder v${version}`, handled: true };
   } catch {
-    return { reply: 'wechat-claude-code (version unknown)', handled: true };
+    return { reply: 'wechat-ai-coder (version unknown)', handled: true };
   }
 }
 
@@ -223,7 +250,7 @@ export function handleUnknown(cmd: string, args: string): CommandResult {
 
   if (skill) {
     const prompt = args ? `Use the ${skill.name} skill: ${args}` : `Use the ${skill.name} skill`;
-    return { handled: true, claudePrompt: prompt };
+    return { handled: true, agentPrompt: prompt };
   }
 
   return {

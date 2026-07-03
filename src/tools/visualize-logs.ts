@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Log Visualizer for wechat-claude-code
+ * Log Visualizer for wechat-ai-coder
  *
- * Generates a self-contained HTML page that compares Claude CLI's original
+ * Generates a self-contained HTML page that compares the agent CLI's original
  * output with what the user actually saw in WeChat.
  *
  * Usage:
@@ -64,7 +64,7 @@ interface Session {
   slashCommands: string[];
 
   // Enriched from chatHistory
-  claudeFullOutput: string | null;
+  agentFullOutput: string | null;
 }
 
 // ─── CLI Args ───
@@ -196,7 +196,7 @@ function reconstructSessions(lines: ParsedLine[]): Session[] {
     }
 
     // Query start
-    if (line.message === 'Starting' && line.raw?.includes('Claude CLI query')) {
+    if (line.message === 'Starting' && (line.raw?.includes('Codex CLI query') || line.raw?.includes('Claude CLI query'))) {
       const data = tryParseJson(line.raw.replace(/^.*?\{/, '{'));
       current = {
         index: sessions.length + 1,
@@ -211,7 +211,7 @@ function reconstructSessions(lines: ParsedLine[]): Session[] {
         userMessages: [...pendingUserMsgs],
         sentMessages: [],
         slashCommands: [],
-        claudeFullOutput: null,
+        agentFullOutput: null,
       };
       pendingUserMsgs = [];
       sessions.push(current);
@@ -219,7 +219,7 @@ function reconstructSessions(lines: ParsedLine[]): Session[] {
     }
 
     // Query completed
-    if (line.message === 'Claude' && line.raw?.includes('CLI query completed')) {
+    if ((line.message === 'Codex' || line.message === 'Claude') && line.raw?.includes('CLI query completed')) {
       if (current) {
         current.endTime = line.timestamp;
         const start = new Date(current.startTime).getTime();
@@ -237,7 +237,7 @@ function reconstructSessions(lines: ParsedLine[]): Session[] {
     }
 
     // Query aborted
-    if (line.message === 'Claude' && line.raw?.includes('CLI query aborted')) {
+    if ((line.message === 'Codex' || line.message === 'Claude') && line.raw?.includes('CLI query aborted')) {
       if (current) {
         current.endTime = line.timestamp;
         const start = new Date(current.startTime).getTime();
@@ -250,7 +250,7 @@ function reconstructSessions(lines: ParsedLine[]): Session[] {
     }
 
     // Query timed out
-    if (line.message === 'Claude' && line.raw?.includes('query timed out')) {
+    if ((line.message === 'Codex' || line.message === 'Claude') && line.raw?.includes('query timed out')) {
       if (current) {
         current.hasError = true;
       }
@@ -318,7 +318,7 @@ function enrichSessions(sessions: Session[], chatEntries: ChatEntry[]): void {
       }
     }
     if (best) {
-      session.claudeFullOutput = best.content;
+      session.agentFullOutput = best.content;
     }
   }
 }
@@ -433,9 +433,9 @@ function renderDiff(segments: DiffSegment[]): string {
     if (seg.type === 'same') {
       html += text;
     } else if (seg.type === 'lost') {
-      html += `<span class="diff-lost" title="Claude 输出了但未发送到微信">${text}</span>`;
+      html += `<span class="diff-lost" title="Agent 输出了但未发送到微信">${text}</span>`;
     } else {
-      html += `<span class="diff-extra" title="微信收到了但 Claude 未输出">${text}</span>`;
+      html += `<span class="diff-extra" title="微信收到了但 Agent 未输出">${text}</span>`;
     }
   }
   return html;
@@ -445,14 +445,14 @@ function generateHtml(sessions: Session[], date: string): string {
   const totalSent = sessions.reduce((sum, s) => sum + s.sentMessages.filter(m => !m.isKeepalive).length, 0);
   const totalKeepalive = sessions.reduce((sum, s) => sum + s.sentMessages.filter(m => m.isKeepalive).length, 0);
   const totalErrors = sessions.filter(s => s.hasError).length;
-  const withFullOutput = sessions.filter(s => s.claudeFullOutput !== null).length;
+  const withFullOutput = sessions.filter(s => s.agentFullOutput !== null).length;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WeChat-Claude-Code Log Viewer — ${esc(date)}</title>
+<title>WeChat AI Coder Log Viewer — ${esc(date)}</title>
 <style>
   :root {
     --bg: #f0f2f5;
@@ -564,7 +564,7 @@ function generateHtml(sessions: Session[], date: string): string {
 </style>
 </head>
 <body>
-<h1>WeChat-Claude-Code Log Viewer</h1>
+<h1>WeChat AI Coder Log Viewer</h1>
 <p class="subtitle">${esc(date)} — ${sessions.length} 个会话</p>
 
 <div class="stats">
@@ -642,16 +642,16 @@ function renderSessionCard(s: Session): string {
     sentHtml += '</div>';
   }
 
-  // Claude full output
-  const claudeHtml = s.claudeFullOutput
-    ? `<div class="section-content">${esc(s.claudeFullOutput)}</div>`
+  // Agent full output
+  const agentHtml = s.agentFullOutput
+    ? `<div class="section-content">${esc(s.agentFullOutput)}</div>`
     : '<div class="no-data">完整输出不可用（会话历史已修剪或未记录）</div>';
 
   // Diff
   let diffHtml: string;
   let hasDiff = false;
-  if (s.claudeFullOutput) {
-    const segments = computeDiff(s.claudeFullOutput, s.sentMessages);
+  if (s.agentFullOutput) {
+    const segments = computeDiff(s.agentFullOutput, s.sentMessages);
     hasDiff = !segments.every(seg => seg.type === 'same');
     diffHtml = `<div class="section-content" style="white-space:pre-wrap;word-break:break-word">${renderDiff(segments)}</div>`;
   } else {
@@ -669,7 +669,7 @@ function renderSessionCard(s: Session): string {
       ${resumeBadge}${errorBadge}
     </div>
     <div class="session-meta">
-      <span${diffIndicator}>${s.claudeFullOutput ? `${s.claudeFullOutput.length} → ${totalSentChars} chars` : 'no history'}</span>
+      <span${diffIndicator}>${s.agentFullOutput ? `${s.agentFullOutput.length} → ${totalSentChars} chars` : 'no history'}</span>
       ${s.sessionId ? `<span class="char-count">sid: ${s.sessionId.slice(0, 8)}...</span>` : ''}
     </div>
   </div>
@@ -679,8 +679,8 @@ function renderSessionCard(s: Session): string {
       <div class="section-content">${s.userMessages.map(m => esc(m.text)).join('\n') || '(无)'}</div>
     </div>
     <div class="section">
-      <div class="section-title claude">Claude 完整输出${s.claudeFullOutput ? ` <span class="char-count">${s.claudeFullOutput.length} chars</span>` : ''}</div>
-      ${claudeHtml}
+      <div class="section-title claude">Agent 完整输出${s.agentFullOutput ? ` <span class="char-count">${s.agentFullOutput.length} chars</span>` : ''}</div>
+      ${agentHtml}
     </div>
     <div class="section">
       <div class="section-title sent">发送到微信 <span class="char-count">${realMessages.length} 条消息${keepaliveMessages.length > 0 ? ` + ${keepaliveMessages.length} 心跳` : ''}</span></div>
@@ -712,7 +712,7 @@ function main() {
   console.log(`Loaded ${chatEntries.length} chat history entries`);
   enrichSessions(sessions, chatEntries);
 
-  const enriched = sessions.filter(s => s.claudeFullOutput !== null).length;
+  const enriched = sessions.filter(s => s.agentFullOutput !== null).length;
   console.log(`Enriched ${enriched}/${sessions.length} sessions with full output`);
 
   const html = generateHtml(sessions, date);

@@ -1,5 +1,5 @@
 /**
- * TurnRouter 把 Claude CLI 的流式输出按"回合"分流：
+ * TurnRouter 把本地 Agent CLI 的流式输出按"回合"分流：
  *
  * - tool_use 回合的文本 → 立即作为 interstitial emit（agent loop 进度）
  * - 其他 stop_reason（end_turn / max_tokens / stop_sequence / pause_turn / ...）

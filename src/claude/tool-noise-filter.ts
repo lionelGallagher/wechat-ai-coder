@@ -3,9 +3,9 @@
  *
  * 某些 LLM 供应商（如 Z.ai 等聚合代理）会把服务端内置工具的输入/输出（JSON 参数、
  * URL、识别结果等）以文本形式塞进 `text_delta` 流。bridge 无法在协议层区分这些
- * 内容与 Claude 的正常旁白，于是会被原样推到微信，造成"全是代码"的灾难体验。
+ * 内容与 Agent 的正常旁白，于是会被原样推到微信，造成"全是代码"的灾难体验。
  *
- * 本模块用结构特征判定（不依赖任何 provider 签名），把命中段剥到只剩 Claude 的
+ * 本模块用结构特征判定（不依赖任何 provider 签名），把命中段剥到只剩 Agent 的
  * 旁白，前面加上中性占位 `🔧 [工具调用]`。
  *
  * 设计文档：docs/superpowers/specs/2026-06-27-tool-noise-filter-design.md
@@ -27,7 +27,7 @@ function isStructuralLine(line: string): boolean {
   return false;
 }
 
-/** 找出文本结尾处那段"Claude 的旁白"，没有则返回空串。 */
+/** 找出文本结尾处那段 Agent 旁白，没有则返回空串。 */
 function extractTail(text: string): string {
   const lines = text.split('\n');
   let lastStructuralIdx = -1;

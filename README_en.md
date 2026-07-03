@@ -1,142 +1,143 @@
-# WeChat Claude Code Bridge
+# WeChat AI Coder
 
-<p align="center">
-  <strong>Chat with Claude Code in WeChat, just like texting a friend</strong>
-</p>
+**Default local agent: Codex CLI. Optional local agent: Claude Code CLI.**
 
-<p align="center">
-  <a href="https://github.com/Wechat-ggGitHub/wechat-claude-code/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT"></a>
-  <a href="https://skills.sh/Wechat-ggGitHub/wechat-claude-code"><img src="https://img.shields.io/badge/skills.sh-view_page-blue?style=flat-square" alt="skills.sh"></a>
-  <a href="README.md"><img src="https://img.shields.io/badge/Lang-中文-lightgrey?style=flat-square" alt="中文"></a>
-</p>
+Bridge personal WeChat messages to local coding agents. Codex CLI is the default provider, and Claude Code CLI is available as an optional provider. After binding WeChat with a QR code, you can send text, images, files, or voice messages in WeChat; the daemon forwards them to the selected local provider and sends the result back to WeChat.
 
-Scan a QR code to bind your WeChat, and a new "friend" appears in your contacts. Send it a message — it gets forwarded to Claude Code running on your computer, and the reply streams back to WeChat in real time. Supports text, images, voice, and files.
+> The WeChat QR confirmation screen may show the iLink/OpenClaw app name. That is the WeChat transport layer, not the local agent. The local execution layer is Codex by default, or Claude after `/provider claude`.
 
----
+## Provider Support
+
+| Provider | Status | How to use |
+|---|---|---|
+| Codex CLI | Default | No switch needed. New sessions use Codex unless changed. |
+| Claude Code CLI | Optional | Run `/provider claude` after Claude Code CLI is installed and authenticated. |
+
+Switch providers from WeChat:
+
+```text
+/provider codex
+/provider claude
+/status
+```
+
+Codex and Claude keep separate session IDs, so switching providers does not mix their conversation state.
 
 ## Highlights
 
 | | |
 |---|---|
-| **Scan and go** | No account signup, no server deployment. Scan a QR code and you're done in a minute. All data stays on your machine. |
-| **Clean messages** | Only key info gets pushed — progress, results, key decisions. Tool calls and intermediate noise are filtered out automatically. |
-| **"Typing..." indicator** | WeChat shows a typing indicator while Claude is working, so you always know it's on it. |
-| **Consistent experience** | Mobile and desktop Claude Code behave identically — same orchestration, same output. Not two disconnected AIs. |
-| **Two-way files** | Send images, Word docs, PDFs for Claude to analyze. Files Claude generates get pushed directly to WeChat — no need to go back to your computer. |
-| **Timeout reassurance** | Task taking longer than 5 minutes? You'll get an automatic message letting you know it's still working. |
-
----
+| **WeChat remote coding** | Send coding tasks from your phone without remote desktop access. |
+| **Codex by default** | Runs local tasks with `codex exec --json --sandbox danger-full-access`. |
+| **Claude optional** | Switch with `/provider claude` when Claude Code CLI is installed. |
+| **Independent sessions** | Stores separate Codex thread IDs and Claude session IDs, so providers do not share conversation state. |
+| **Two-way files** | WeChat attachments are downloaded locally; generated file paths can be pushed back to WeChat. |
+| **Cleaner messages** | Tool noise is filtered before messages are sent back to WeChat. |
+| **Local-first** | WeChat credentials, sessions, and logs stay on your machine. |
 
 ## Install
 
-**Option 1: skills CLI (recommended)**
-
 ```bash
-npx skills add Wechat-ggGitHub/wechat-claude-code
-```
-
-The first time you trigger the skill, it will automatically clone the source and install dependencies.
-
-**Option 2: Manual clone**
-
-```bash
-git clone https://github.com/Wechat-ggGitHub/wechat-claude-code.git ~/.claude/skills/wechat-claude-code
-cd ~/.claude/skills/wechat-claude-code && npm install
+git clone https://github.com/lionelGallagher/wechat-ai-coder.git ~/.codex/skills/wechat-ai-coder
+cd ~/.codex/skills/wechat-ai-coder
+npm install
 ```
 
 ## Quick Start
 
-### 1. Bind WeChat
+### 1. Install and authenticate Codex CLI
 
 ```bash
-cd ~/.claude/skills/wechat-claude-code
+codex login
+codex doctor
+```
+
+Claude is optional:
+
+```bash
+claude --version
+```
+
+### 2. Bind WeChat
+
+```bash
 npm run setup
 ```
 
-A QR code will pop up — scan it with WeChat.
+A QR code will pop up. Scan it with personal WeChat. If WeChat says it will link `openclaw`, that is the iLink transport app name.
 
-### 2. Start the service
+### 3. Start the service
 
 ```bash
 npm run daemon -- start
 ```
 
-On macOS, this registers a launchd agent for auto-start on boot and auto-restart on crash.
-
-### 3. Start chatting
-
-Open WeChat and send a message to your new "friend".
-
-### Manage the service
+On Windows, or when you want to keep the service in the foreground, use:
 
 ```bash
-npm run daemon -- status   # Check if running
-npm run daemon -- stop     # Stop the service
-npm run daemon -- restart  # Restart (after code updates)
-npm run daemon -- logs     # View recent logs
+npm start
 ```
 
----
+### 4. Start chatting
 
-## WeChat Commands
+Open WeChat and send a message to the bound contact. The daemon forwards the message to the selected local provider and streams the reply back.
 
-Send these directly in the WeChat chat:
+## Commands
 
 | Command | Description |
-|---------|-------------|
+|---|---|
 | `/help` | Show available commands |
-| `/clear` | Clear current session, start fresh |
+| `/clear` | Clear current session |
 | `/stop` | Stop current task |
-| `/model <name>` | Switch Claude model |
-| `/prompt <text>` | Set a system prompt (e.g. "reply in Chinese") |
+| `/provider [codex|claude]` | View or switch the current provider |
+| `/model <name>` | Switch the current provider model, for example `/model gpt-5.5` |
+| `/prompt <text>` | Set a system prompt |
 | `/cwd <path>` | Switch working directory |
 | `/skills` | List installed Skills |
-| `/status` | View current session state |
+| `/status` | Show provider, model, working directory, and current provider session ID |
 | `/history [n]` | View recent chat history |
-| `/compact` | Compact context, start a new CLI session |
-| `/reset` | Full reset including working directory |
-| `/undo [n]` | Remove last N messages from history |
-| `/<skill> [args]` | Trigger any installed Skill |
-
----
+| `/compact` | Clear the current provider session ID and start a fresh session next turn |
+| `/reset` | Reset session settings |
+| `/undo [n]` | Remove recent messages from history |
+| `/<skill> [args]` | Trigger an installed Skill |
 
 ## How It Works
 
+```text
+WeChat phone <-> iLink/OpenClaw Bot API <-> Node.js daemon <-> Codex or Claude CLI local
 ```
-WeChat (phone) ←→ ilink Bot API ←→ Node.js daemon ←→ Claude Code CLI (local)
+
+Codex first turns run:
+
+```bash
+codex exec --json --cd <cwd> --sandbox danger-full-access -c 'approval_policy="never"' -
 ```
 
-The daemon long-polls WeChat for new messages, forwards them to the local `claude` CLI, and streams replies back to WeChat. Everything runs on your own machine.
+Codex resumed turns run:
 
----
-
-## Roadmap
-
-- **Message queue optimization** — Consecutive messages can produce mixed-up replies. Working on a better queuing strategy. Ideas welcome.
-- **Prevent sleep** — Use macOS `caffeinate` to keep the system awake, so closing the lid doesn't interrupt the service.
-- **Resume desktop session** — Chat on your computer for a while, then continue the same session from WeChat on the go. Same workspace, same context.
-
----
+```bash
+codex exec resume --json -c 'approval_policy="never"' -c 'sandbox_mode="danger-full-access"' <thread-id> -
+```
 
 ## Prerequisites
 
 - Node.js >= 18
-- macOS or Linux
-- A personal WeChat account
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and authenticated
-
-> **Note:** Claude Code supports third-party API providers (OpenRouter, AWS Bedrock, etc.) — set `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` accordingly.
+- Windows, macOS, or Linux
+- Personal WeChat account
+- Codex CLI installed and authenticated
+- Claude Code CLI installed and authenticated, only if you use `/provider claude`
 
 ## Data Directory
 
-All data is stored in `~/.wechat-claude-code/`:
+For compatibility with existing bindings, data is still stored in `~/.wechat-claude-code/`:
 
-```
+```text
 ~/.wechat-claude-code/
-├── accounts/       # WeChat account credentials
-├── config.json     # Global config
-├── sessions/       # Session data
-└── logs/           # Rotating logs (daily, 30-day retention)
+|-- accounts/
+|-- config.json
+|-- sessions/
+|-- pending/
+`-- logs/
 ```
 
 ## License
